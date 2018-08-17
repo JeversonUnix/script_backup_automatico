@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# executa sempre o programa em modo root
+[ "$(whoami)" != "root" ] && exec sudo -- "$0" "$@"
+
+#pasta onde esta as pasta de backup
+pasta_backup=/home/lpic/backup_setores/
+#pasta atual que deve ser modificada para o padrao de bkp setores_dd-mm-yyyy
+setores=/home/lpic/backup_setores/setores
+
+# Se existir pasta setores
+if [ -d $setores ]
+then
+	#Pega a data da pasta para poder ser modificada no padrao
+	data_mod_pasta=$(date -r $setores  +%d-%m-%Y)
+   	#data_mod_pasta=$((data_mod_pasta-1))  # data decremenat um dia 	anterior...
+
+	#Modifica a data para o padrao solicitado setores_dd-mm-yyyy
+	mv -v $setores $pasta_backup/setores_$data_mod_pasta
+
+	#Pega quantidade de pasta que tem no setores deve sempre haver 3 	 
+	#pasta setores,setores_xx_xx_xxxx e setores_xx_xx_xxxx
+	qnt_pastas=$(ls /home/lpic/backup_setores | wc -l)
+
+	#Mantem somente 2 backups
+	if (($qnt_pastas > 3))
+	then		
+		dir="/home/lpic/backup_setores"
+		min_dirs=2
+		#pega a pasta mais velha de deleta
+		[[ $(find "$dir" -maxdepth 1 -type d | wc -l) -ge $min_dirs ]] &&
+		IFS= read -r -d $'\0' line < <(find "$dir" -maxdepth 1 -printf '%T@ %p\0' 2>/dev/null | sort -z -n)
+		file="${line#* }"
+		#Remove a pasta mais velha
+		sudo ls -d $file  | xargs rm -r -v
+	fi
+	
+	#---------------#
+	# Aqui pode colocar o script backup_pasta
+	#---------------#
+
+	#remover essa linha dai, porque o arquivo que faz backup atual ele já cria a pasta setores
+	mkdir $pasta_backup/setores
+
+	#Exemplo de bkp.... so pra testes
+	tar zcvpf $setores/bkp_cacti.tgz /var/www/html/
+
+	echo -e "Criado pasta setores em: \e[31m"$pasta_backup"\e[0m"
+	echo -e "\e[92m #Backup realizado com sucesso# $(date +%d-%m-%Y) -> $(date +%H:%M) \e[0m" 
+else
+	echo "Criado pasta setores em: "$pasta_backup
+	mkdir $pasta_backup/setores
+
+fi
+
+
+
